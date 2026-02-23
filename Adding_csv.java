@@ -1,0 +1,202 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.io.*;
+
+// Bryanna Wilson – Part 2 (File I/O + Refactor)
+
+public class Adding_csv extends JFrame {
+
+    private DefaultListModel<String> listModel;
+    private JList<String> itemList;
+    private JButton playersButton;
+    private JButton staffButton;
+    private String itemCategory = "";
+
+    public Adding_csv() {
+
+        setTitle("Team Roster");
+        setSize(400, 400);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        listModel = new DefaultListModel<>();
+        itemList = new JList<>(listModel);
+
+        playersButton = new JButton("Players");
+        staffButton = new JButton("Coaches/Staff");
+
+        JPanel buttonPanel = new JPanel();
+        buttonPanel.add(playersButton);
+        buttonPanel.add(staffButton);
+
+        add(buttonPanel, BorderLayout.NORTH);
+        add(new JScrollPane(itemList), BorderLayout.CENTER);
+
+        playersButton.addActionListener(new ButtonClickListener());
+        staffButton.addActionListener(new ButtonClickListener());
+
+        itemList.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                if (!itemList.isSelectionEmpty()) {
+                    String selected = itemList.getSelectedValue();
+                    showDetails(selected);
+                    logSelection(selected);
+                }
+            }
+        });
+
+        setVisible(true);
+    }
+
+    // ===============================
+    // 🔹 FILE READING METHOD (Players)
+    // ===============================
+    private void loadFromFile(String filename) {
+        listModel.clear();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            String line;
+
+            br.readLine(); // Skip header
+
+            while ((line = br.readLine()) != null) {
+                String[] values = line.split(",");
+
+                if (values.length >= 2) {
+                    String displayText = values[0] + " - " + values[1];
+                    listModel.addElement(displayText);
+                }
+            }
+
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Error loading file: " + filename);
+        }
+    }
+
+    // ===============================
+    // 🔹 FILE READING METHOD (Staff)
+    // Format: Name,Title,Description (Description can have commas)
+    // ===============================
+    private void loadStaffFromFile(String filename) {
+        listModel.clear();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
+            br.readLine(); // skip header
+            String line;
+
+            while ((line = br.readLine()) != null) {
+                // split into 3 parts only
+                String[] parts = line.split(",", 3);
+                if (parts.length >= 3) {
+                    String displayText = parts[0] + " - " + parts[1];
+                    listModel.addElement(displayText);
+                }
+            }
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Error loading file: " + filename);
+        }
+    }
+
+    // ===============================
+    // 🔹 FILE WRITING METHOD
+    // ===============================
+    private void logSelection(String selection) {
+        try (BufferedWriter bw = new BufferedWriter(new FileWriter("selections_log.txt", true))) {
+            bw.write(selection);
+            bw.newLine();
+        } catch (IOException e) {
+            JOptionPane.showMessageDialog(this, "Error writing to log file.");
+        }
+    }
+
+    // ===============================
+    // 🔹 SHOW DETAILS (Players + Staff)
+    // ===============================
+    private void showDetails(String selectedItem) {
+
+        String name = selectedItem.split(" - ")[0];
+
+        if (itemCategory.equals("Players")) {
+            // Players CSV
+            try (BufferedReader br = new BufferedReader(new FileReader("players.csv"))) {
+                String line;
+                br.readLine(); // Skip header
+
+                while ((line = br.readLine()) != null) {
+                    String[] values = line.split(",");
+                    if (values[0].equals(name)) {
+                        String message =
+                                "Name: " + values[0] +
+                                "\nPosition: " + values[1] +
+                                "\nNumber: " + values[2] +
+                                "\nHeight: " + values[3] +
+                                "\nWeight: " + values[4] +
+                                "\nAge: " + values[5] +
+                                "\nExp: " + values[6] +
+                                "\nCollege: " + values[7];
+
+                        JOptionPane.showMessageDialog(this, message);
+                        return;
+                    }
+                }
+
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Error reading details.");
+            }
+
+        } else if (itemCategory.equals("Coaches/Staff")) {
+            // Staff CSV
+            try (BufferedReader br = new BufferedReader(new FileReader("staff.csv"))) {
+                String line;
+                br.readLine(); // Skip header
+
+                while ((line = br.readLine()) != null) {
+                    String[] parts = line.split(",", 3); // split into Name, Title, Description
+                    if (parts.length >= 3 && parts[0].equals(name)) {
+                        String message =
+                                "Name: " + parts[0] +
+                                "\nTitle: " + parts[1] +
+                                "\n" + parts[2];
+
+                        JOptionPane.showMessageDialog(this, message);
+                        return;
+                    }
+                }
+
+            } catch (IOException e) {
+                JOptionPane.showMessageDialog(this, "Error reading details.");
+            }
+        }
+    }
+
+    // ===============================
+    // 🔹 BUTTON LISTENER
+    // ===============================
+    private class ButtonClickListener implements ActionListener {
+
+        public void actionPerformed(ActionEvent e) {
+
+            if (e.getSource() == playersButton) {
+                itemCategory = "Players";
+                updateItemList();
+            } else if (e.getSource() == staffButton) {
+                itemCategory = "Coaches/Staff";
+                updateItemList();
+            }
+        }
+
+        private void updateItemList() {
+
+            if (itemCategory.equals("Players")) {
+                loadFromFile("players.csv");
+            } else if (itemCategory.equals("Coaches/Staff")) {
+                loadStaffFromFile("staff.csv"); 
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        new Adding_csv();
+    }
+}
